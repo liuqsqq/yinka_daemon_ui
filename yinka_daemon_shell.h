@@ -31,12 +31,15 @@ typedef struct List
 }List;
 
 
-#define HELP          (1)
-#define EXIT          (2)
-#define SHOWSTATUS    (3)
-#define STARTDAEMON   (4)
-#define STOPDAEMON    (5)
-
+typedef enum {
+    CMD_HELP = 1,
+    CMD_EXIT,
+    CMD_SHOWSTATUS,
+    CMD_STARTDAEMON,
+    CMD_STOPDAEMON,
+    CMD_RESETUPDATE,
+    CMD_MAX
+}CMD_TYPE;
 
 
 

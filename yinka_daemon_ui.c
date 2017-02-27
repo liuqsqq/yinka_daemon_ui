@@ -8,14 +8,15 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 
-#define MAX_COLUMN   (35)
+#define MAX_COLUMN   (30)
 
 char* cmd_set[]={  
     "help - printf help",  
     "exit - exit ",  
     "show status program (program_id) - show program's status info",  
     "start daemon program (program_id) - allow program's daemon",  
-    "stop daemon program - close program's daemon"  
+    "stop daemon program - close program's daemon",
+    "reset update now - force to update once from server"
 }; 
 
 
@@ -24,12 +25,15 @@ int toExit();
 int toShow();
 int toStartDaemon();
 int toStopDaemon();
+int toResetUpdate(int para);
+
 int receive_data(int* recv_result, char* msgbuf);
 int send_msg_daemon_server(int program_id, int daemon_switch);
 
 
 static int g_yinka_daemon_client_sock;
-static struct sockaddr_in server_addr;
+static struct sockaddr_in daemon_server_addr;
+static struct sockaddr_in update_server_addr;
 
 
 #define MAX_STR_LEN (64)
@@ -39,9 +43,10 @@ static struct sockaddr_in server_addr;
 #define RECEIVE_OK           (0)
 
 
-#define TYPE_CONTROL_CMD       (0)
-#define TYPE_KEEPALIVE         (1)
-#define TYPE_RES_STATISTIC     (2)
+#define TYPE_CONTROL_CMD         (0)
+#define TYPE_KEEPALIVE           (1)
+#define TYPE_RES_STATISTIC       (2)
+#define TYPE_UPDATE_CONTROL_CMD  (3)
 
 
 #define TYPE_YINKA_PRINT   (1)
@@ -51,7 +56,7 @@ static struct sockaddr_in server_addr;
 
 
 typedef int (*pfToState)(int program_id);
-pfToState g_pFun[] = {toHelp, toExit, toShow, toStartDaemon, toStopDaemon}; //状态枚举值对应下标
+pfToState g_pFun[] = {toHelp, toExit, toShow, toStartDaemon, toStopDaemon, toResetUpdate}; //状态枚举值对应下标
 
 
 typedef struct {
@@ -76,7 +81,7 @@ int toHelp(int program_id)
 { 
     int x,y;
   
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < (CMD_MAX-1); i++)
     {
         getyx(stdscr,y,x);  
         mvprintw(y+1,0,cmd_set[i]);  
@@ -100,7 +105,7 @@ int toShow(int program_id)
     int value_len = 0;
     float memrate = 0.0;
     float cpurate = 0.0;
-    char * pYinkaDameonUItemp= NULL;
+    char * p_Yinka_Dameon_UI_temp= NULL;
     YINKA_DAMEON_TLV_T *pYinkaDameonUI = NULL;
 
     PROGRAM_STATISTIC_T *pYinkaDameonUIInfo = NULL;
@@ -108,24 +113,22 @@ int toShow(int program_id)
     char * pDaemonShowtemp = NULL;
     
     ret = send_msg_daemon_server(program_id, 2);
-    if (ret < 0)
-    {
+    if (ret < 0){
         getyx(stdscr,y,x);  
         mvprintw(y+1,0,"Send to Yinka Daemon error"); 
         refresh();   
         return -1;
     }
     ret = receive_data(&recv_bytes, msgbuf);
-    if (ret == RECEIVE_OK)
-    {
+    if (ret == RECEIVE_OK){
         #if 0
         getyx(stdscr,y,x);  
         mvprintw(y+1,0,"\nReceive %d bytes", recv_bytes); 
         refresh();
         #endif 
-        pYinkaDameonUItemp = msgbuf;
+        p_Yinka_Dameon_UI_temp = msgbuf;
         
-        pYinkaDameonUI = (YINKA_DAMEON_TLV_T *)pYinkaDameonUItemp;
+        pYinkaDameonUI = (YINKA_DAMEON_TLV_T *)p_Yinka_Dameon_UI_temp;
         type = ntohs(pYinkaDameonUI->type);
         data_len += sizeof(unsigned short);
         data_len += sizeof(unsigned short);
@@ -146,10 +149,9 @@ int toShow(int program_id)
         }
         #endif 
         
-        if (type == TYPE_RES_STATISTIC)
-        {            
+        if (type == TYPE_RES_STATISTIC){            
             msg_nums = ntohs(*(unsigned short *)(pYinkaDameonUI->data));
-            pYinkaDameonUIInfo = (PROGRAM_STATISTIC_T*)(pYinkaDameonUItemp + data_len +sizeof(unsigned short));
+            pYinkaDameonUIInfo = (PROGRAM_STATISTIC_T*)(p_Yinka_Dameon_UI_temp + data_len +sizeof(unsigned short));
             
             #if 0   
             getyx(stdscr,y,x);  
@@ -157,8 +159,7 @@ int toShow(int program_id)
             refresh();  
             #endif
             
-            for (int j = 0; j < msg_nums;j++)
-            {
+            for (int j = 0; j < msg_nums;j++){
                 getyx(stdscr,y,x);  
                 mvprintw(y+1,0,"Prog_name:%s", pYinkaDameonUIInfo->prog_name); 
                 mvprintw(y+2,0,"Version:%d", ntohl(pYinkaDameonUIInfo->version));
@@ -182,7 +183,7 @@ int toShow(int program_id)
 int receive_data(int* recv_result, char* msgbuf)
 {
     int x,y ;
-    int server_addr_len = sizeof(server_addr);
+    int server_addr_len = sizeof(daemon_server_addr);
     struct timeval timeout; //Time out setting  
     fd_set fdst;    //File descriptor for select function 
 
@@ -205,7 +206,7 @@ int receive_data(int* recv_result, char* msgbuf)
     else
     {
         *recv_result = recvfrom(g_yinka_daemon_client_sock, msgbuf,  
-                MSGBUF_SIZE, 0,(struct sockaddr*) (&(server_addr)),&server_addr_len);
+                MSGBUF_SIZE, 0,(struct sockaddr*) (&(daemon_server_addr)),&server_addr_len);
         if (*recv_result > 0)
         {
             return RECEIVE_OK;
@@ -275,7 +276,39 @@ int send_msg_daemon_server(int program_id, int daemon_switch)
            
 
     ret = sendto(g_yinka_daemon_client_sock, buffer, buffer_len, 0, \
-        (struct sockaddr*)&server_addr, sizeof(server_addr));
+        (struct sockaddr*)&daemon_server_addr, sizeof(daemon_server_addr));
+    if (ret < 0)
+    {
+        perror("send failed");
+        return -1;
+    }
+    return 0;
+}
+
+int send_msg_to_update_server()
+{
+    int x,y;
+    char buffer[512];
+    int buffer_len = 0;
+    int ret = -1;
+        
+    YINKA_DAMEON_TLV_T * pvalue = (YINKA_DAMEON_TLV_T *)buffer;
+    pvalue->type = htons(TYPE_UPDATE_CONTROL_CMD);
+    pvalue->len = htons(1);
+    pvalue->data[0] = 0x01;
+    buffer_len = 2 + 2 + 1;
+        
+    #if 0
+    for (int i = 0; i < buffer_len; i++)
+    {
+        getyx(stdscr,y,x);  
+        mvprintw(y,x+1,"%2x ", buffer[i]);   
+        refresh();
+    }
+    #endif
+           
+    ret = sendto(g_yinka_daemon_client_sock, buffer, buffer_len, 0, \
+        (struct sockaddr*)&update_server_addr, sizeof(update_server_addr));
     if (ret < 0)
     {
         perror("send failed");
@@ -292,6 +325,11 @@ int toStartDaemon(int program_id)
 int toStopDaemon(int program_id)
 {
     send_msg_daemon_server(program_id, 0);
+}
+
+int toResetUpdate(int para)
+{
+    send_msg_to_update_server();
 }
 
 
@@ -325,11 +363,15 @@ int yinka_daemon_client_init()
 
     } 
 
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(12332);
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memset(&daemon_server_addr, 0, sizeof(daemon_server_addr));
+    daemon_server_addr.sin_family = AF_INET;
+    daemon_server_addr.sin_port = htons(12332);
+    daemon_server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     
+    memset(&update_server_addr, 0, sizeof(update_server_addr));
+    update_server_addr.sin_family = AF_INET;
+    update_server_addr.sin_port = htons(12333);
+    update_server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");    
     return 0;
 }
 
@@ -372,7 +414,7 @@ void main()
             toHelp(0);
             continue;
         }
-        if (ret == EXIT)
+        if (ret == CMD_EXIT)
         {
             break;
         }

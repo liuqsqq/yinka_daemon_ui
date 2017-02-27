@@ -257,7 +257,7 @@ int  parse_cmd(int *id)
                 mvprintw(y+1,0,"cmdstr is : exit");  
                 refresh(); 
                 #endif
-                ret = EXIT;
+                ret = CMD_EXIT;
             } 
             else if (strcmp(para[0], "help") == 0)
             {
@@ -266,7 +266,7 @@ int  parse_cmd(int *id)
                 mvprintw(y+1,0,"cmdstr is : help");  
                 refresh();  
                 #endif
-                ret = HELP;
+                ret = CMD_HELP;
             }    
         }
         else if (argc_cnt == 3)
@@ -280,7 +280,7 @@ int  parse_cmd(int *id)
                 mvprintw(y+1,0,"cmdstr is : %s",cmd_set[SHOWSTATUS]);  
                 refresh();
                 #endif
-                ret = SHOWSTATUS;
+                ret = CMD_SHOWSTATUS;
             }
             else if ((strcmp(para[0], "start") == 0) &&
                    (strcmp(para[1], "daemon") == 0) &&
@@ -291,7 +291,7 @@ int  parse_cmd(int *id)
                 mvprintw(y+1,0,"cmdstr is : %s",cmd_set[STARTDAEMON]);  
                 refresh();
                 #endif
-                ret = STARTDAEMON;
+                ret = CMD_STARTDAEMON;
             }
             else if((strcmp(para[0], "stop") == 0) &&
                    (strcmp(para[1], "daemon") == 0) &&
@@ -302,7 +302,13 @@ int  parse_cmd(int *id)
                 mvprintw(y+1,0,"cmdstr is : %s",cmd_set[STOPDAEMON]);  
                 refresh();
                 #endif
-                ret = STOPDAEMON;
+                ret = CMD_STOPDAEMON;
+            }
+            else if((strcmp(para[0], "reset") == 0) &&
+                   (strcmp(para[1], "update") == 0) &&
+                   (strcmp(para[2], "now") == 0) )
+            {
+                ret = CMD_RESETUPDATE;
             }
         }
         else if(argc_cnt == 4)
@@ -317,7 +323,7 @@ int  parse_cmd(int *id)
                 mvprintw(y+1,0,"cmdstr is : %s %d",cmd_set[SHOWSTATUS], program_id);  
                 refresh();
                 #endif
-                ret = SHOWSTATUS;
+                ret = CMD_SHOWSTATUS;
             }
             else if ((strcmp(para[0], "start") == 0) &&
                    (strcmp(para[1], "daemon") == 0) &&
@@ -328,7 +334,7 @@ int  parse_cmd(int *id)
                 mvprintw(y+1,0,"cmdstr is : %s %d",cmd_set[STARTDAEMON], program_id);  
                 refresh();
                 #endif
-                ret = STARTDAEMON;
+                ret = CMD_STARTDAEMON;
             }
             else if ((strcmp(para[0], "stop") == 0) &&
                 (strcmp(para[1], "daemon") == 0) &&
@@ -339,7 +345,7 @@ int  parse_cmd(int *id)
                 mvprintw(y+1,0,"cmdstr is : %s %d",cmd_set[STOPDAEMON], program_id);  
                 refresh(); 
                 #endif
-                ret = STOPDAEMON;
+                ret = CMD_STOPDAEMON;
             }
         }
         free(pargv);
