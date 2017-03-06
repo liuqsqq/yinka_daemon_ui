@@ -310,6 +310,12 @@ int  parse_cmd(int *id)
             {
                 ret = CMD_RESETUPDATE;
             }
+            else if((strcmp(para[0], "reboot") == 0) &&
+                    (strcmp(para[1], "daemon") == 0) &&
+                    (strcmp(para[2], "program") == 0) )
+            {
+                ret = CMD_REBOOTPROGRAM;
+            }
         }
         else if(argc_cnt == 4)
         {
@@ -346,6 +352,12 @@ int  parse_cmd(int *id)
                 refresh(); 
                 #endif
                 ret = CMD_STOPDAEMON;
+            }
+            else if((strcmp(para[0], "reboot") == 0) &&
+                    (strcmp(para[1], "daemon") == 0) &&
+                    (strcmp(para[2], "program") == 0) )
+            {
+                ret = CMD_REBOOTPROGRAM;
             }
         }
         free(pargv);

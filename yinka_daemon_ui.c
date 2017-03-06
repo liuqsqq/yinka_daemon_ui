@@ -16,7 +16,8 @@ char* cmd_set[]={
     "show status program (program_id) - show program's status info",  
     "start daemon program (program_id) - allow program's daemon",  
     "stop daemon program - close program's daemon",
-    "reset update now - force to update once from server"
+    "reset update now - force to update once from server",
+    "reboot daemon program (program_id)- force to reboot program"
 }; 
 
 
@@ -26,6 +27,7 @@ int toShow();
 int toStartDaemon();
 int toStopDaemon();
 int toResetUpdate(int para);
+int toRebootProgram(int program_id);
 
 int receive_data(int* recv_result, char* msgbuf);
 int send_msg_daemon_server(int program_id, int daemon_switch);
@@ -56,7 +58,7 @@ static struct sockaddr_in update_server_addr;
 
 
 typedef int (*pfToState)(int program_id);
-pfToState g_pFun[] = {toHelp, toExit, toShow, toStartDaemon, toStopDaemon, toResetUpdate}; //状态枚举值对应下标
+pfToState g_pFun[] = {toHelp, toExit, toShow, toStartDaemon, toStopDaemon, toResetUpdate, toRebootProgram}; //状态枚举值对应下标
 
 
 typedef struct {
@@ -73,6 +75,7 @@ typedef struct {
     long uptime;
     int reboot_times;
     int keepalive_failed_times; 
+    int state;
 }PROGRAM_STATISTIC_T;
 
 
@@ -330,6 +333,11 @@ int toStopDaemon(int program_id)
 int toResetUpdate(int para)
 {
     send_msg_to_update_server();
+}
+
+int toRebootProgram(int program_id)
+{
+    send_msg_daemon_server(program_id, 4);
 }
 
 
