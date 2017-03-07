@@ -8,6 +8,9 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 
+#include <time.h> 
+
+
 #define MAX_COLUMN   (30)
 
 char* cmd_set[]={  
@@ -114,7 +117,9 @@ int toShow(int program_id)
     PROGRAM_STATISTIC_T *pYinkaDameonUIInfo = NULL;
     int msg_nums = 0;
     char * pDaemonShowtemp = NULL;
-    
+
+    char szBuf[MAX_STR_LEN] = {0};
+    time_t timer;
     ret = send_msg_daemon_server(program_id, 2);
     if (ret < 0){
         getyx(stdscr,y,x);  
@@ -161,12 +166,16 @@ int toShow(int program_id)
             mvprintw(y+1,0,"msg_num: %d", msg_nums);  
             refresh();  
             #endif
-            
+        
             for (int j = 0; j < msg_nums;j++){
                 getyx(stdscr,y,x);  
                 mvprintw(y+1,0,"Prog_name:%s", pYinkaDameonUIInfo->prog_name); 
                 mvprintw(y+2,0,"Version:%d", ntohl(pYinkaDameonUIInfo->version));
-                mvprintw(y+3,0,"Uptime:%ld", ntohl(pYinkaDameonUIInfo->uptime)); 
+                timer = ntohl(pYinkaDameonUIInfo->uptime);
+                memset(szBuf, 0, sizeof(szBuf));
+                strftime(szBuf, sizeof(szBuf), "%Y-%m-%d %H:%M:%S", localtime(&timer));    
+                //mvprintw(y+3,0,"Uptime:%ld", ntohl(pYinkaDameonUIInfo->uptime)); 
+                mvprintw(y+3,0,"Uptime:%s", szBuf); 
                 memrate = (float)ntohl(pYinkaDameonUIInfo->memrate)/1000;
                 cpurate = (float)ntohl(pYinkaDameonUIInfo->cpurate)/1000;
                 mvprintw(y+4,0,"Memrate:%f%%", memrate);
